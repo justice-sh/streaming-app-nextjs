@@ -22,6 +22,7 @@ export const blurMediaStream = (video: HTMLVideoElement, canvas: HTMLCanvasEleme
   if (shouldBlurMediaStream) return
   if (!mediaStream) return
 
+  setRoomData("changeMediaStreamBg", false)
   setRoomData("shouldBlurMediaStream", true)
 
   const segmentation = getSelfieSegmentation()
@@ -64,8 +65,68 @@ export const blurMediaStream = (video: HTMLVideoElement, canvas: HTMLCanvasEleme
   })
 }
 
-export const removeMediaStreamBlur = () => {
+export const changeMediaStreamBackground = (video: HTMLVideoElement, canvas: HTMLCanvasElement) => {
+  const mediaStream = getRoomData("mediaStream")
+
+  if (!mediaStream) return
+
   setRoomData("shouldBlurMediaStream", false)
+  setRoomData("changeMediaStreamBg", true)
+
+  const bgImage = new Image(video.width, video.height)
+  bgImage.src = "/images/high-rise-living-room-zoom-background.webp"
+
+  bgImage.onload = handleLoad
+
+  const segmentation = getSelfieSegmentation()
+
+  function handleLoad() {
+    const shouldChangeBg = getRoomData("changeMediaStreamBg")
+    if (!shouldChangeBg) return
+
+    const ctx = canvas.getContext("2d")
+    if (!ctx) throw Error("Could not create canvas context.")
+
+    requestAnimationFrame((frame) => {
+      segmentation.send({ image: video })
+    })
+
+    segmentation.onResults((result) => {
+      const ctx = canvas.getContext("2d")
+
+      if (!ctx) throw Error("No canvas context present")
+
+      ctx.save()
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      // draw segmentation mask
+      ctx.filter = "none"
+      ctx.globalCompositeOperation = "source-over"
+      ctx.drawImage(result.segmentationMask, 0, 0, canvas.width, canvas.height)
+
+      // draw imageFrame on top
+      ctx.globalCompositeOperation = "source-in"
+      ctx.drawImage(result.image, 0, 0, canvas.width, canvas.height)
+
+      ctx.globalCompositeOperation = "destination-over"
+      ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height)
+
+      ctx.restore()
+
+      const changeMediaStreamBg = getRoomData("changeMediaStreamBg")
+
+      if (changeMediaStreamBg) {
+        requestAnimationFrame((frame) => {
+          segmentation.send({ image: video })
+        })
+      }
+    })
+  }
+}
+
+export const removeMediaStreamEffect = () => {
+  setRoomData("shouldBlurMediaStream", false)
+  setRoomData("changeMediaStreamBg", false)
 }
 
 const getSelfieSegmentation = () => {
