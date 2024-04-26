@@ -1,0 +1,8 @@
+build
+node_modules
+.idea
+internals
+public
+.next
+yarn.lock
+tailwind.config.js
