@@ -9,3 +9,7 @@ export const setRoomData = <Key extends keyof RoomState>(key: Key, data: RoomSta
 export const getRoomData = <Key extends keyof RoomState>(key: Key) => {
   return window.queryClient.getQueryData<RoomState[Key]>(getRoomKey(key))
 }
+
+export const removeRoomData = <Key extends keyof RoomState>(key: Key) => {
+  window.queryClient.removeQueries({ queryKey: getRoomKey(key) })
+}

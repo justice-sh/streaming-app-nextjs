@@ -1,16 +1,15 @@
 import { useQuery } from "@tanstack/react-query"
-import { getRoomData, getRoomKey } from "./actions"
+import { getRoomKey } from "./actions"
+import { RoomState } from "./types"
 
-// const useTypedQuery = <T>() => {}
-
-export const useMediaStream = () => {
-  const result = useQuery({ queryKey: getRoomKey("mediaStream"), queryFn: () => getRoomData("mediaStream") })
-  return result.data
+const useRoomDataSelector = <Key extends keyof RoomState>(key: Key) => {
+  const result = useQuery<RoomState[Key]>({ queryKey: getRoomKey(key), enabled: false })
+  return result
 }
 
-export const useMediaEffectStatus = () => {
-  const r1 = useQuery({ queryKey: getRoomKey("shouldBlurMediaStream"), queryFn: () => getRoomData("shouldBlurMediaStream") })
-  const r2 = useQuery({ queryKey: getRoomKey("changeMediaStreamBg"), queryFn: () => getRoomData("changeMediaStreamBg") })
+export const useMediaStream = () => {
+  const original = useRoomDataSelector("mediaStream")
+  // const filtered = useRoomDataSelector("filteredMediaStream")
 
-  return r1.data || r2.data || false
+  return original.data
 }
