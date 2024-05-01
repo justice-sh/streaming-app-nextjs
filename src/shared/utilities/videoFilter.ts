@@ -19,16 +19,16 @@ export class VideoFilter {
     return this.canvas?.captureStream(15)
   }
 
-  updateConfig(config: Partial<Config>) {
-    if (!this.config?.stream && !config?.stream) throw Error("No stream provided")
-    this.config = { ...this.config, width: 800, height: 500, ...config } as any
-  }
-
   async disableEffect() {
     await this.reset()
     this.config = undefined
     this.canvas = undefined
     this.video = undefined
+  }
+
+  private updateConfig(config: Partial<Config>) {
+    if (!this.config?.stream && !config?.stream) throw Error("No stream provided")
+    this.config = { ...this.config, width: 800, height: 500, ...config } as any
   }
 
   private async reset() {
@@ -122,9 +122,9 @@ export class VideoFilter {
 
 const convertBlurLevel2Pixel = (level: BlurLevel) => {
   const map: Record<BlurLevel, string> = {
-    high: "18px",
-    medium: "12px",
-    low: "6px",
+    high: "30px",
+    medium: "20px",
+    low: "10px",
   }
   return map[level]
 }
