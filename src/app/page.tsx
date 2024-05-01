@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useRef } from "react"
-import { startMediaStream } from "@/features/actions/mediaStream"
+import { ReactNode, useEffect, useRef } from "react"
+import { startMediaStream, stopMediaStream } from "@/features/actions/mediaStream"
 import { useRoomDataSelector } from "@/shared/data/room/selectors"
 import { getRoomData, deleteRoomData, setRoomData } from "@/shared/data/room/actions"
 import { VideoFilter } from "@/shared/utilities/videoFilter"
@@ -14,13 +14,7 @@ export default function Home() {
   const mediaStream = useRoomDataSelector("mediaStream").data
   const filteredMediaStream = useRoomDataSelector("filteredMediaStream").data
 
-  console.log(filteredMediaStream)
-
   useLoadStream(videoRef.current, filteredMediaStream || mediaStream)
-
-  useEffect(() => {
-    startMediaStream()
-  }, [])
 
   const handleBlurBackground = async () => {
     try {
@@ -65,17 +59,21 @@ export default function Home() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
+    <main className="flex min-h-screen flex-col items-center justify-between p-24 gap-4">
       <div className="max-w-[800px] w-full border h-[500px] relative flex items-center justify-center z-0 overflow-hidden">
         <video className="absolute size-full z-10 [transform:rotateY(180deg)]" ref={videoRef} autoPlay />
       </div>
 
-      <div className="flex gap-3">
-        <button onClick={handleBlurBackground}>Blur Video</button>
+      <div className="grid grid-cols-3 gap-2">
+        <Button onClick={startMediaStream}>Enable Cam</Button>
 
-        <button onClick={handleDisableEffect}>Disable Effect</button>
+        <Button onClick={stopMediaStream}>Disable Cam</Button>
 
-        <button onClick={handleChangeBackground}>Change background</button>
+        <Button onClick={handleBlurBackground}>Blur Video</Button>
+
+        <Button onClick={handleDisableEffect}>Disable Effect</Button>
+
+        <Button onClick={handleChangeBackground}>Change background</Button>
       </div>
     </main>
   )
@@ -86,3 +84,9 @@ const useLoadStream = (video?: HTMLVideoElement | null, stream?: MediaStream) =>
     if (video && stream) video.srcObject = stream
   }, [stream, video])
 }
+
+const Button = ({ children, onClick }: { onClick?: () => void; children?: ReactNode }) => (
+  <button className="bg-green-500 p-3 text-lg" onClick={onClick}>
+    {children}
+  </button>
+)

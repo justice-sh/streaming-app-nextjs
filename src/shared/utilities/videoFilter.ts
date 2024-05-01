@@ -46,6 +46,7 @@ export class VideoFilter {
 
   private createElements() {
     if (!this.config) throw Error("Provide a config object")
+    if (!this.config.stream) throw Error("Invalid config object: missing stream")
     if (!this.config.width || !this.config.height) throw Error("There's no width or height in config object")
 
     const canvas = document.createElement("canvas") as HTMLCanvasElement

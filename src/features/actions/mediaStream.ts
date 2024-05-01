@@ -6,11 +6,22 @@ export const startMediaStream = async () => {
 
   const stream = await navigator.mediaDevices.getUserMedia({ video: true })
 
+  const streams = getRoomData("streamList") ?? []
+
   setRoomData("mediaStream", stream)
+  setRoomData("streamList", [...streams, stream])
   setRoomData("isCameraOn", true)
 }
 
 export const stopMediaStream = async () => {
+  const streams = getRoomData("streamList") ?? []
+
+  streams.forEach((s) => {
+    s.getVideoTracks().forEach((t) => t.stop())
+  })
+
+  setRoomData("streamList", [])
+
   setRoomData("mediaStream", undefined)
   setRoomData("isCameraOn", false)
 }
