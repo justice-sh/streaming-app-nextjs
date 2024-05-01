@@ -1,17 +1,22 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef } from "react"
 import { startMediaStream } from "@/features/actions/mediaStream"
-import { useMediaStream } from "@/shared/data/room/selectors"
-import { getRoomData, removeRoomData, setRoomData } from "@/shared/data/room/actions"
-import { videoStreamFilter } from "@/shared/utilities/videoStreamFilter"
+import { useRoomDataSelector } from "@/shared/data/room/selectors"
+import { getRoomData, deleteRoomData, setRoomData } from "@/shared/data/room/actions"
+import { VideoFilter } from "@/shared/utilities/videoFilter"
+
+const videoFilter = new VideoFilter()
 
 export default function Home() {
   const videoRef = useRef<HTMLVideoElement>(null)
 
-  const [] = useState()
+  const mediaStream = useRoomDataSelector("mediaStream").data
+  const filteredMediaStream = useRoomDataSelector("filteredMediaStream").data
 
-  usePlayMediaStream(videoRef.current)
+  console.log(filteredMediaStream)
+
+  useLoadStream(videoRef.current, filteredMediaStream || mediaStream)
 
   useEffect(() => {
     startMediaStream()
@@ -22,31 +27,26 @@ export default function Home() {
       const stream = getRoomData("mediaStream")
       if (!stream) return
 
-      const width = videoRef.current?.clientWidth
-      const height = videoRef.current?.clientHeight
-
-      const filteredStream = await videoStreamFilter.applyEffect({ stream, type: "blur_background", height, width })
-      // if (filteredStream) setRoomData("filteredMediaStream", filteredStream)
+      const filteredStream = await videoFilter.applyEffect({ stream, type: "blur-bg" })
+      if (filteredStream) setRoomData("filteredMediaStream", filteredStream)
     } catch (error) {
       console.error("Blur Background Error:", error)
     }
   }
 
   const handleChangeBackground = () => {
-    const image = new Image(640, 360)
+    const width = videoRef.current?.clientWidth
+    const height = videoRef.current?.clientHeight
+
+    const image = new Image(width, height)
     image.src = "/images/high-rise-living-room-zoom-background.webp"
 
-    image.onload = handleLoad
-
-    async function handleLoad() {
+    image.onload = async () => {
       try {
         const stream = getRoomData("mediaStream")
         if (!stream) return
 
-        const width = videoRef.current?.clientWidth
-        const height = videoRef.current?.clientHeight
-
-        const filteredStream = await videoStreamFilter.applyEffect({ stream, type: "change_background", image, height, width })
+        const filteredStream = await videoFilter.applyEffect({ stream, type: "change-bg", image })
         if (filteredStream) setRoomData("filteredMediaStream", filteredStream)
       } catch (error) {
         console.error("Change Background Error:", error)
@@ -56,9 +56,9 @@ export default function Home() {
 
   const handleDisableEffect = async () => {
     try {
-      await videoStreamFilter.disableEffect()
+      await videoFilter.disableEffect()
       await startMediaStream()
-      removeRoomData("filteredMediaStream")
+      deleteRoomData("filteredMediaStream")
     } catch (error) {
       console.error("Disable Effect", error)
     }
@@ -66,36 +66,23 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div
-        className="max-w-[800px] w-full border h-[500px] relative flex items-center justify-center z-0 overflow-hidden"
-        id="frame-container"
-      >
-        <video id="video" className="absolute size-full z-10 [transform:rotateY(180deg)] object-fill" ref={videoRef} autoPlay />
+      <div className="max-w-[800px] w-full border h-[500px] relative flex items-center justify-center z-0 overflow-hidden">
+        <video className="absolute size-full z-10 [transform:rotateY(180deg)]" ref={videoRef} autoPlay />
       </div>
 
       <div className="flex gap-3">
-        <button className="" onClick={handleBlurBackground}>
-          Blur Video
-        </button>
+        <button onClick={handleBlurBackground}>Blur Video</button>
 
-        <button className="" onClick={handleDisableEffect}>
-          Disable Effect
-        </button>
+        <button onClick={handleDisableEffect}>Disable Effect</button>
 
-        <button className="" onClick={handleChangeBackground}>
-          Change background
-        </button>
+        <button onClick={handleChangeBackground}>Change background</button>
       </div>
     </main>
   )
 }
 
-const usePlayMediaStream = (video?: HTMLVideoElement | null) => {
-  const mediaStream = useMediaStream()
-
+const useLoadStream = (video?: HTMLVideoElement | null, stream?: MediaStream) => {
   useEffect(() => {
-    if (video && mediaStream) {
-      video.srcObject = mediaStream
-    }
-  }, [mediaStream, video])
+    if (video && stream) video.srcObject = stream
+  }, [stream, video])
 }
