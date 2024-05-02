@@ -1,5 +1,6 @@
 import { SelfieSegmentation, Results } from "@mediapipe/selfie_segmentation"
 import { Application, ApplicationOptions, Renderer } from "pixi.js"
+import { tickerWorker } from "./workers"
 
 export class VideoFilter {
   private config?: Config
@@ -32,6 +33,7 @@ export class VideoFilter {
   private async reset() {
     this.app?.stop()
     await this.selfieSegmentation?.close()
+    tickerWorker.postMessage("stop")
   }
 
   private checkConfig(config: Config) {
@@ -43,19 +45,28 @@ export class VideoFilter {
   }
 
   private async setup() {
-    if (!this.config) throw Error("Provide a config object")
+    try {
+      tickerWorker.postMessage("start")
 
-    const { width, height } = this.config
-    if (!width || !height) throw Error("Config object is missing width or height")
+      if (!this.config) throw Error("Provide a config object")
 
-    const { video, canvas, ctx } = getElements(this.config)
+      const { width, height } = this.config
+      if (!width || !height) throw Error("Config object is missing width or height")
 
-    this.app = new Application()
-    await initPixiAppWithSupportedRenderer(this.app, { width, height, canvas, powerPreference: "high-performance" })
+      const { video, canvas, ctx } = getElements(this.config)
 
-    this.selfieSegmentation = await this.initSelfiSegmentation(canvas, ctx)
+      this.app = new Application()
+      await initPixiAppWithSupportedRenderer(this.app, { width, height, canvas, powerPreference: "high-performance" })
 
-    this.app.ticker.add(() => this.selfieSegmentation!.send({ image: video }))
+      this.selfieSegmentation = await this.initSelfiSegmentation(canvas, ctx)
+
+      tickerWorker.onmessage = (event) => {
+        if (event.data === "tick" && this.selfieSegmentation) this.selfieSegmentation.send({ image: video })
+      }
+    } catch (error) {
+      await this.disableEffect()
+      throw error
+    }
   }
 
   private async initSelfiSegmentation(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
