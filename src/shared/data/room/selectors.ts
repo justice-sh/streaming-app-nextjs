@@ -11,5 +11,5 @@ export const useMediaStream = () => {
   const original = useRoomDataSelector("mediaStream")
   const filtered = useRoomDataSelector("filteredMediaStream")
 
-  return original.data
+  return filtered.data || original.data
 }
