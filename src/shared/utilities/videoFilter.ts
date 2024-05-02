@@ -1,10 +1,10 @@
 import { SelfieSegmentation, Results } from "@mediapipe/selfie_segmentation"
+import { Application, ApplicationOptions, Renderer } from "pixi.js"
 
 export class VideoFilter {
   private config?: Config
+  private app?: Application<Renderer>
   private selfieSegmentation?: SelfieSegmentation
-  private video?: HTMLVideoElement
-  private canvas?: HTMLCanvasElement
 
   async applyEffect(config: Config) {
     const isPassed = this.checkConfig(config)
@@ -13,27 +13,25 @@ export class VideoFilter {
     if (isPassed && this.selfieSegmentation) return undefined
 
     await this.reset()
-    this.createElements()
-    await this.setupFilter()
-    this.sendNextFrame()
-    return this.canvas?.captureStream(15)
+    await this.setup()
+    return this.app?.canvas.captureStream(60)
   }
 
   async disableEffect() {
     await this.reset()
     this.config = undefined
-    this.canvas = undefined
-    this.video = undefined
+    this.selfieSegmentation = undefined
+    this.app = undefined
   }
 
   private updateConfig(config: Partial<Config>) {
     if (!this.config?.stream && !config?.stream) throw Error("No stream provided")
-    this.config = { ...this.config, width: 800, height: 500, ...config } as any
+    this.config = { ...this.config, width: 670, height: 500, ...config } as any
   }
 
   private async reset() {
+    this.app?.stop()
     await this.selfieSegmentation?.close()
-    this.selfieSegmentation = undefined
   }
 
   private checkConfig(config: Config) {
@@ -44,44 +42,32 @@ export class VideoFilter {
     return true
   }
 
-  private createElements() {
+  private async setup() {
     if (!this.config) throw Error("Provide a config object")
-    if (!this.config.stream) throw Error("Invalid config object: missing stream")
-    if (!this.config.width || !this.config.height) throw Error("There's no width or height in config object")
 
-    const canvas = document.createElement("canvas") as HTMLCanvasElement
-    const video = document.createElement("video") as HTMLVideoElement
+    const { width, height } = this.config
+    if (!width || !height) throw Error("Config object is missing width or height")
 
-    canvas.width = this.config.width
-    canvas.height = this.config.height
+    const { video, canvas, ctx } = getElements(this.config)
 
-    video.width = this.config.width
-    video.height = this.config.height
-    video.autoplay = true
-    video.srcObject = this.config.stream
+    this.app = new Application()
+    await initPixiAppWithSupportedRenderer(this.app, { width, height, canvas, powerPreference: "high-performance" })
 
-    this.video = video
-    this.canvas = canvas
+    this.selfieSegmentation = await this.initSelfiSegmentation(canvas, ctx)
+
+    this.app.ticker.add(() => this.selfieSegmentation!.send({ image: video }))
   }
 
-  private async setupFilter() {
-    const canvas = this.canvas
-    if (!canvas) throw Error("No canvas element present")
-
-    const ctx = canvas.getContext("2d")
-    if (!ctx) throw Error("No canvas context present")
-
+  private async initSelfiSegmentation(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
     const selfieSegmentation = new SelfieSegmentation({
-      locateFile: (file) => {
-        return `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1/${file}`
-      },
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1/${file}`,
     })
 
-    selfieSegmentation.setOptions({ modelSelection: 1 })
+    selfieSegmentation.setOptions({ modelSelection: 1, selfieMode: false })
     selfieSegmentation.onResults((results) => this.handleSegmentationResults(results, canvas, ctx))
     await selfieSegmentation.initialize()
 
-    this.selfieSegmentation = selfieSegmentation
+    return selfieSegmentation
   }
 
   private handleSegmentationResults(results: Results, canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
@@ -108,17 +94,37 @@ export class VideoFilter {
     } else if (this.config?.type === "change-bg") {
       ctx.drawImage(this.config!.image, 0, 0, canvas.width, canvas.height)
     }
-
     ctx.restore()
-    this.sendNextFrame()
   }
+}
 
-  private sendNextFrame() {
-    requestAnimationFrame(async () => {
-      if (!this.selfieSegmentation || !this.video) return await this.reset()
-      this.selfieSegmentation?.send({ image: this.video })
-    })
+const initPixiAppWithSupportedRenderer = async (app: Application<Renderer>, options: Partial<ApplicationOptions>) => {
+  try {
+    await app.init({ ...options, preference: "webgl" })
+  } catch (error) {
+    await app.init({ ...options, preference: "webgpu" })
   }
+}
+
+const getElements = (config?: Config) => {
+  if (!config) throw Error("Provide a config object")
+  if (!config.stream) throw Error("Invalid config object: missing stream")
+  if (!config.width || !config.height) throw Error("There's no width or height in config object")
+
+  const canvas = document.createElement("canvas")
+  // canvas.width = config.width // width and height have no effect on the output
+  // canvas.height = config.height
+
+  const ctx = canvas.getContext("2d")
+  if (!ctx) throw Error("Could not create canvas context")
+
+  const video = document.createElement("video")
+  video.autoplay = true
+  video.srcObject = config.stream
+  // video.width = config.width // width and height have no effect on the output
+  // video.height = config.height
+
+  return { video, canvas, ctx }
 }
 
 const convertBlurLevel2Pixel = (level: BlurLevel) => {
