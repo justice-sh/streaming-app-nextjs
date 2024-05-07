@@ -4,7 +4,7 @@ import { ReactNode, useEffect, useRef } from "react"
 import { startMediaStream, stopMediaStream } from "@/features/actions/mediaStream"
 import { useRoomDataSelector } from "@/shared/data/room/selectors"
 import { getRoomData, deleteRoomData, setRoomData } from "@/shared/data/room/actions"
-import { VideoFilter } from "@/shared/utilities/videoFilter"
+import { VideoFilter } from "@/shared/utilities/VideoFilterr"
 
 const videoFilter = new VideoFilter()
 
@@ -21,8 +21,12 @@ export default function Home() {
       const stream = getRoomData("mediaStream")
       if (!stream) return
 
-      const filteredStream = await videoFilter.applyEffect({ stream, type: "blur-bg" })
-      if (filteredStream) setRoomData("filteredMediaStream", filteredStream)
+      const filterState = videoFilter.updateConfig({ stream, type: "blur-bg" })
+      // if (filterState === "running") return
+
+      const filteredStream = await videoFilter.applyEffect()
+      console.log(filterState, filteredStream.id, filteredStream)
+      setRoomData("filteredMediaStream", filteredStream)
     } catch (error) {
       console.error("Blur Background Error:", error)
     }
@@ -40,8 +44,11 @@ export default function Home() {
         const stream = getRoomData("mediaStream")
         if (!stream) return
 
-        const filteredStream = await videoFilter.applyEffect({ stream, type: "change-bg", image })
-        if (filteredStream) setRoomData("filteredMediaStream", filteredStream)
+        const filterState = videoFilter.updateConfig({ stream, type: "change-bg", image })
+        if (filterState === "running") return
+
+        const filteredStream = await videoFilter.applyEffect()
+        setRoomData("filteredMediaStream", filteredStream)
       } catch (error) {
         console.error("Change Background Error:", error)
       }
