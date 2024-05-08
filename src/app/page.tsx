@@ -22,10 +22,9 @@ export default function Home() {
       if (!stream) return
 
       const filterState = videoFilter.updateConfig({ stream, type: "blur-bg" })
-      // if (filterState === "running") return
+      if (filterState === "running") return
 
       const filteredStream = await videoFilter.applyEffect()
-      console.log(filterState, filteredStream.id, filteredStream)
       setRoomData("filteredMediaStream", filteredStream)
     } catch (error) {
       console.error("Blur Background Error:", error)

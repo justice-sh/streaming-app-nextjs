@@ -2,6 +2,7 @@ import { SelfieSegmentation, Results } from "@mediapipe/selfie_segmentation"
 import { Application, ApplicationOptions, Renderer } from "pixi.js"
 import { BlurLevel, VideoFilterState, VideoFilterConfig } from "./types"
 import { tickerWorker } from "../workers"
+import loglevel from "loglevel"
 
 export class VideoFilter {
   private config?: VideoFilterConfig
@@ -36,14 +37,13 @@ export class VideoFilter {
     this.config = undefined
     this.selfieSegmentation = undefined
     this.app = undefined
-    this.state = "pending"
     this.capturedStream = undefined
   }
 
   private async reset() {
-    this.app?.stop()
     await this.selfieSegmentation?.close()
     tickerWorker.postMessage("stop")
+    this.state = "pending"
   }
 
   private checkConfig(config?: VideoFilterConfig) {
@@ -67,7 +67,6 @@ export class VideoFilter {
 
       this.app = new Application()
       await initPixiAppWithSupportedRenderer(this.app, { width, height, canvas, powerPreference: "high-performance" })
-
       this.selfieSegmentation = await this.initSelfiSegmentation(canvas, ctx)
 
       tickerWorker.onmessage = (event) => {
@@ -80,14 +79,10 @@ export class VideoFilter {
   }
 
   private async initSelfiSegmentation(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
-    const selfieSegmentation = new SelfieSegmentation({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1/${file}`,
-    })
-
+    const selfieSegmentation = new SelfieSegmentation({ locateFile: (file) => `/models/${file}` })
     selfieSegmentation.setOptions({ modelSelection: 1, selfieMode: false })
     selfieSegmentation.onResults((results) => this.handleSegmentationResults(results, canvas, ctx))
     await selfieSegmentation.initialize()
-
     return selfieSegmentation
   }
 
@@ -120,7 +115,7 @@ export class VideoFilter {
       }
       ctx.restore()
     } catch (error) {
-      console.error("VideoFilter Handler Error:", error)
+      loglevel.error("VideoFilter Handler Error:", error)
     }
   }
 }
@@ -153,3 +148,10 @@ const convertBlurLevel2Pixel = (level: BlurLevel) => {
   }
   return map[level]
 }
+
+/** NOTE
+ *
+ * const selfieSegmentation = new SelfieSegmentation({ locateFile: (file) => `/models/${file}` })
+ * On this line I'm loading the files locally, but you could serve them over cdn through this link:
+ * -> `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/${file}`
+ */
