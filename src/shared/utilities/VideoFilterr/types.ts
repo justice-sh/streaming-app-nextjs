@@ -15,5 +15,3 @@ type ChangeBg = {
 }
 
 export type BlurLevel = "low" | "medium" | "high"
-
-export type VideoFilterState = "running" | "pending"

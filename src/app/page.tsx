@@ -21,8 +21,8 @@ export default function Home() {
       const stream = getRoomData("mediaStream")
       if (!stream) return
 
-      const filterState = videoFilter.updateConfig({ stream, type: "blur-bg" })
-      if (filterState === "running") return
+      const shouldApply = videoFilter.updateConfig({ stream, type: "blur-bg" })
+      if (!shouldApply) return
 
       const filteredStream = await videoFilter.applyEffect()
       setRoomData("filteredMediaStream", filteredStream)
@@ -43,8 +43,8 @@ export default function Home() {
         const stream = getRoomData("mediaStream")
         if (!stream) return
 
-        const filterState = videoFilter.updateConfig({ stream, type: "change-bg", image })
-        if (filterState === "running") return
+        const shouldApply = videoFilter.updateConfig({ stream, type: "change-bg", image })
+        if (!shouldApply) return
 
         const filteredStream = await videoFilter.applyEffect()
         setRoomData("filteredMediaStream", filteredStream)

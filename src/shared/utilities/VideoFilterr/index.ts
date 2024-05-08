@@ -1,6 +1,6 @@
 import { SelfieSegmentation, Results } from "@mediapipe/selfie_segmentation"
 import { Application, ApplicationOptions, Renderer } from "pixi.js"
-import { BlurLevel, VideoFilterState, VideoFilterConfig } from "./types"
+import { BlurLevel, VideoFilterConfig } from "./types"
 import { tickerWorker } from "../workers"
 import loglevel from "loglevel"
 
@@ -8,27 +8,38 @@ export class VideoFilter {
   private config?: VideoFilterConfig
   private app?: Application<Renderer>
   private selfieSegmentation?: SelfieSegmentation
-  private state: VideoFilterState = "pending"
+  private shouldApplyEffect = false
   private capturedStream?: MediaStream
 
-  updateConfig(config: VideoFilterConfig) {
-    this.checkConfig(config)
-    this.state = this.determineFilterState(config)
-
+  /**
+   *
+   * @param config VideoFilterConfig
+   * @returns boolean (shouldApplyEffect)
+   * - Sometimes you don't need to call applyEffect() after updating config.
+   * - This method returns a shouldApplyEffect (boolean) value to help you know when to apply effect
+   * - 'true' means you should call applyEffect()
+   * - 'false' means there's no need (note that, you won't spoil anything if you do)
+   */
+  updateConfig(config: VideoFilterConfig): boolean {
+    this.sanityCheck(config)
+    this.shouldApplyEffect = this.checkShouldApplyEffect(config)
     this.config = { ...this.config, width: 670, height: 500, ...config }
-    return this.state
+    return this.shouldApplyEffect
   }
 
+  /**
+   * Call this method if you get 'true', after calling updateConfig.
+   * However, the method is smart enough, so even if you call it on 'false', nothing breaks.
+   * @returns MediaStream
+   */
   async applyEffect() {
-    if (this.state === "running") return this.capturedStream!
+    this.sanityCheck()
+    if (!this.shouldApplyEffect && this.capturedStream) return this.capturedStream
 
-    this.checkConfig()
     await this.reset()
     await this.setup()
 
-    this.state = "running"
     this.capturedStream = this.app!.canvas.captureStream(60)
-
     return this.capturedStream
   }
 
@@ -41,21 +52,29 @@ export class VideoFilter {
   }
 
   private async reset() {
-    await this.selfieSegmentation?.close()
     tickerWorker.postMessage("stop")
-    this.state = "pending"
+    this.shouldApplyEffect = false
+    await this.selfieSegmentation?.close()
   }
 
-  private checkConfig(config?: VideoFilterConfig) {
-    if (!this.config?.stream && !config?.stream) throw Error("No stream provided")
-    if (!this.config?.type && !config?.type) throw Error("No type provided")
+  private sanityCheck(config?: VideoFilterConfig) {
+    if (!this.config && !config) throw Error("No config available. First update config")
+    if (!this.config?.stream && !config?.stream) throw Error("No stream available in config object")
+    if (!this.config?.type && !config?.type) throw Error("No filter type available in config object")
   }
 
-  private determineFilterState(config: VideoFilterConfig): VideoFilterState {
-    if (!this.config || this.config.stream.id !== config.stream.id) return "pending"
-    if (!config.height || !config.width) return "running"
-    if (this.config.height !== config.height || this.config.width !== config.width) return "pending"
-    return "running"
+  /**
+   *
+   * @param config VideoFilterConfig
+   * @returns boolean
+   *
+   * Checks if we should apply effect based on new config and old config
+   */
+  private checkShouldApplyEffect(config: VideoFilterConfig) {
+    if (!this.config || this.config.stream.id !== config.stream.id) return true
+    if (!config.height || !config.width) return false
+    if (this.config.height !== config.height || this.config.width !== config.width) return true
+    return false
   }
 
   private async setup() {
@@ -88,7 +107,7 @@ export class VideoFilter {
 
   private handleSegmentationResults(results: Results, canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
     try {
-      this.checkConfig()
+      this.sanityCheck()
 
       ctx.save()
       ctx.clearRect(0, 0, canvas.width, canvas.height)
