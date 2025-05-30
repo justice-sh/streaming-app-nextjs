@@ -1,7 +1,7 @@
 "use client"
 
 import { ReactNode, useEffect, useRef } from "react"
-import { startMediaStream } from "@/features/actions/mediaStream"
+import { startMediaStream, stopMediaStream } from "@/features/actions/mediaStream"
 import { useRoomDataSelector } from "@/shared/data/room/selectors"
 import { getRoomData, deleteRoomData, setRoomData } from "@/shared/data/room/actions"
 import { VideoFilter } from "@/shared/utilities/VideoFilterr"
@@ -73,13 +73,13 @@ export default function VideoStream() {
       <div className="grid grid-cols-3 gap-2">
         <Button onClick={startMediaStream}>Enable Cam</Button>
 
-        {/* <Button onClick={stopMediaStream}>Disable Cam</Button> */}
+        <Button onClick={stopMediaStream}>Disable Cam</Button>
 
         <Button onClick={handleBlurBackground}>Blur Video</Button>
 
-        <Button onClick={handleDisableEffect}>Disable Effect</Button>
-
         <Button onClick={handleChangeBackground}>Change background</Button>
+
+        <Button onClick={handleDisableEffect}>Disable Effect</Button>
       </div>
     </main>
   )

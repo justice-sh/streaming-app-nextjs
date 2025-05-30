@@ -4,7 +4,7 @@ import { ReactNode } from "react"
 import { create } from "zustand"
 
 type Store = {
-  // State
+  // Data
   bears: { name: string; age: number }
 
   // Actions
@@ -13,19 +13,24 @@ type Store = {
 }
 
 const useStore = create<Store>()((setState, getState) => ({
+  // Data
   bears: {
     name: "Justice",
     age: 24,
   },
+
+  //Actions
   setName: (name: string) => setState({ bears: { ...getState().bears, name } }),
   setAge: (age: number) => setState({ bears: { name: getState().bears.name, age } }),
 }))
 
 let renderCount = 0
 
+// Accessing the store outside a component
 const setName = useStore.getState().setName
 
 export default function ZustandTest() {
+  // Accessing the store inside a component
   const setAge = useStore((state) => state.setAge)
   console.log("Render count", ++renderCount)
 

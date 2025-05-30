@@ -1,7 +1,8 @@
 "use client"
 
-import ZustandTest from "./ZustandTest"
+import VideoStream from "./VideoStream"
 
 export default function Home() {
-  return <ZustandTest />
+  // return <ZustandTest />
+  return <VideoStream />
 }
